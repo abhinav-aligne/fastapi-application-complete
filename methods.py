@@ -56,10 +56,10 @@ async def deposit(id:int, amount:int, form_data: Annotated[str, Depends(oauth2_s
 
 # Endpoint to withdraw money into a bank account
 @router.put("/withdraw", status_code=status.HTTP_204_NO_CONTENT)
-async def withdraw(w: amt, form_data:  Annotated[str, Depends(oauth2_scheme)]):
+async def withdraw(w: amt, form_data: Annotated[str, Depends(oauth2_scheme)]):
     try:
         checking_query = "SELECT * FROM accounts WHERE account_id = %s"
-        value_query = (id,)
+        value_query = (w.account_id,)
         mycursor.execute(checking_query, value_query)
         checked_id = mycursor.fetchone()
         if checked_id:
@@ -67,11 +67,11 @@ async def withdraw(w: amt, form_data:  Annotated[str, Depends(oauth2_scheme)]):
             values = (w.amount, w.account_id)
             mycursor.execute(query, values)
             mydb.commit()
-            return {"message": "Withdrawal successful"}
+            return {"Withdrawal successful"}
         else:
-            raise HTTPException(status_code=404, detail= "Account not Found in the database list")
-    except SQL.Error as err:
-        raise HTTPException(status_code=500, detail=f"Error: {err}")
+            raise HTTPException(status_code=404, detail="Account not found in the database")
+    except SQL as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {err}")
     
 
 # Endpoint to get the balance of a bank account
