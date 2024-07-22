@@ -16,7 +16,6 @@ def connectivity():
             host = os.getenv("host"),         
             port = os.getenv("port") 
     )
-    print("connected to sql-database")
     mycursor = mydb.cursor(buffered=True)
 
     # Check if the database exists
@@ -25,15 +24,16 @@ def connectivity():
 
     # Fetch the result of the query
     existing_databases = mycursor.fetchall()
+    
     # If database doesn't exist, so creeating it
     if not existing_databases:
         create_database_query = "CREATE DATABASE banking"
         mycursor.execute(create_database_query)
-        print("Database 'banking' created successfully")
-    else:
-        print("Database 'banking' already exists")
+    return mydb, mycursor
 
+def table_banking():
     # Use the database banking
+    mydb, mycursor = connectivity()
     sql1 = "USE banking"
     mycursor.execute(sql1)
     sql2 = '''
@@ -46,5 +46,19 @@ def connectivity():
                 );
                 '''
     mycursor.execute(sql2)
+    mydb.commit()
 
-    return mydb, mycursor
+def user_banking():
+    mydb, mycursor = connectivity()
+    sql1 = "USE banking"
+    mycursor.execute(sql1)
+    sql2 = '''
+                CREATE TABLE IF NOT EXISTS users 
+                (
+                    username VARCHAR(100) NOT NULL,
+                    password VARCHAR(100) NOT NULL,
+                    created_at VARCHAR(100) NOT NULL
+                );
+                '''
+    mycursor.execute(sql2)
+    mydb.commit()

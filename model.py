@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 # It represents a token returned to the client
 class Token(BaseModel):
@@ -34,3 +34,7 @@ class BankAccount(BaseModel):
 class amt(BaseModel):
     account_id : int
     amount : float 
+
+class UserCreate(BaseModel):
+    username: EmailStr
+    password: str
