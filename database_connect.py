@@ -14,7 +14,8 @@ def connectivity():
             user = os.getenv("user"),
             password = os.getenv("password"),
             host = os.getenv("host"),         
-            port = os.getenv("port") 
+            port = os.getenv("port"),
+            database = "banking"
     )
     mycursor = mydb.cursor(buffered=True)
 
@@ -53,12 +54,13 @@ def user_banking():
     sql1 = "USE banking"
     mycursor.execute(sql1)
     sql2 = '''
-                CREATE TABLE IF NOT EXISTS users 
-                (
-                    username VARCHAR(100) NOT NULL,
-                    password VARCHAR(100) NOT NULL,
-                    created_at VARCHAR(100) NOT NULL
-                );
+            CREATE TABLE IF NOT EXISTS users (
+            username VARCHAR(100) NOT NULL,
+            role VARCHAR(50) NOT NULL DEFAULT 'user',
+            password VARCHAR(100) NOT NULL
+            );
                 '''
     mycursor.execute(sql2)
     mydb.commit()
+
+user_banking()

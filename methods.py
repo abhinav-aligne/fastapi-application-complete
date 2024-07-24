@@ -1,17 +1,19 @@
-from fastapi import APIRouter, status, Depends, HTTPException
-from database_connect import SQL, connectivity, table_banking, user_banking
+from fastapi import APIRouter, status, Depends, HTTPException, Security
+from database_connect import SQL, connectivity,table_banking, user_banking
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
-from model import BankAccount, amt, Token, UserCreate
+from model import BankAccount, amt, Token, UserCreate, User
 from auth import create_access_token, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, get_password_hash
-from user_file import fake_users_db
 from datetime import timedelta
+from auth import get_admin_scope, get_user_scope
+
 
 # Initializing the database variables
 mydb, mycursor = connectivity()
 table_banking()
 user_banking()
+
 
 # Password hashing context using bcrypt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -24,24 +26,22 @@ router = APIRouter()
 
 
 # To generate access token after successful login at the endpoint
-@router.post("/token", deprecated=False, description="Giving the access after the login", tags=["AUTHENTICATOIN"])
+@router.post("/token", description="Giving the access after the login", tags=["AUTHENTICATION"], response_model= Token)
 async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    user = authenticate_user(form_data.username, form_data.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": user.username, "scopes":  [user.role]},
+        expires_delta=access_token_expires,
     )
     return Token(access_token=access_token, token_type="bearer")
 
 # Endpoint to create a bank account
-@router.post("/create_account", status_code= status.HTTP_201_CREATED, tags=["ACCOUNT-ACCESSIBILITY"])
-async def create_account(account:BankAccount, form_data: Annotated[str, Depends(oauth2_scheme)]):
+@router.post("/create_account", status_code= status.HTTP_201_CREATED, description="ADMIN ACCESS", tags=["ACCOUNT-ACCESSIBILITY"])
+async def create_account(account:BankAccount,
+                         current_user: Annotated[UserCreate, Security(get_admin_scope, scopes=["admin"])]):
     try:
         query = "INSERT INTO accounts (name_customer, account_id, balance, pin) VALUES (%s, %s, %s, %s)"
         values = (account.name_customer, account.account_id, account.balance, account.pin)
@@ -52,9 +52,10 @@ async def create_account(account:BankAccount, form_data: Annotated[str, Depends(
         raise HTTPException(status_code=500, detail=f"Error: {err}")
    
 
-# Endpoint to deposit money into a bank account
-@router.put("/deposit/{id}/{amount}",status_code=status.HTTP_204_NO_CONTENT, tags=["ACCOUNT-ACCESSIBILITY"])
-async def deposit(id:int, amount:int, form_data: Annotated[str, Depends(oauth2_scheme)]):
+# Endpoint to deposit money into a bank account 
+@router.put("/deposit/{id}/{amount}", status_code=status.HTTP_200_OK, description="USER ACCESS", tags=["ACCOUNT-ACCESSIBILITY"])
+async def deposit(id: int, amount: int,
+                  current_user: UserCreate = Security(get_user_scope, scopes=["user"])):
     try:
         checking_query = "SELECT * FROM accounts WHERE account_id = %s"
         value_query = (id,)
@@ -65,16 +66,17 @@ async def deposit(id:int, amount:int, form_data: Annotated[str, Depends(oauth2_s
             values = (amount, id)
             mycursor.execute(query, values)
             mydb.commit()
-            return {"Successfully deposited"}
+            return {"message": "Successfully deposited"}
         else:
-            raise HTTPException(status_code=404, detail= "Account not Found in the database list")
+            raise HTTPException(status_code=404, detail="Account not found in the database")
     except SQL.Error as err:
-        raise HTTPException(status_code=500, detail=f"Error: {err}")
+        raise HTTPException(status_code=500, detail=f"Database error: {err}")
     
 
 # Endpoint to withdraw money into a bank account
-@router.put("/withdraw", status_code=status.HTTP_204_NO_CONTENT, tags=["ACCOUNT-ACCESSIBILITY"])
-async def withdraw(w: amt, form_data: Annotated[str, Depends(oauth2_scheme)]):
+@router.put("/withdraw", status_code=status.HTTP_204_NO_CONTENT, description="USER ACCESS", tags=["ACCOUNT-ACCESSIBILITY"])
+async def withdraw(w: amt,
+                  current_user: UserCreate = Security(get_user_scope, scopes=["user"])):
     try:
         checking_query = "SELECT * FROM accounts WHERE account_id = %s"
         value_query = (w.account_id,)
@@ -93,8 +95,9 @@ async def withdraw(w: amt, form_data: Annotated[str, Depends(oauth2_scheme)]):
     
 
 # Endpoint to get the balance of a bank account
-@router.get("/get_balance", status_code= status.HTTP_200_OK, tags=["ACCOUNT-ACCESSIBILITY"])
-async def get_balance(account_id: int, form_data:  Annotated[str, Depends(oauth2_scheme)]):
+@router.get("/get_balance", status_code= status.HTTP_200_OK, description="ADMIN ACCESS", tags=["ACCOUNT-ACCESSIBILITY"])
+async def get_balance(account_id: int, 
+                  current_user: UserCreate = Security(get_admin_scope, scopes=["admin"])):
     try:
         query = "SELECT balance FROM accounts WHERE account_id = %s"
         values = (account_id,)
@@ -109,8 +112,9 @@ async def get_balance(account_id: int, form_data:  Annotated[str, Depends(oauth2
     
 
 # Endpoint to delete a bank account
-@router.delete("/delete", status_code=status.HTTP_204_NO_CONTENT, tags=["ACCOUNT-ACCESSIBILITY"])
-async def delete(account_id:int, form_data:  Annotated[str, Depends(oauth2_scheme)]):
+@router.delete("/delete", status_code=status.HTTP_204_NO_CONTENT, description="ADMIN ACCESS",tags=["ACCOUNT-ACCESSIBILITY"])
+async def delete(account_id:int, 
+                  current_user: UserCreate = Security(get_admin_scope, scopes=["admin"])):
     try:
         query = "DELETE FROM accounts WHERE account_id = %s"
         values = (account_id,)
@@ -124,13 +128,8 @@ async def delete(account_id:int, form_data:  Annotated[str, Depends(oauth2_schem
 @router.post("/users", status_code=status.HTTP_201_CREATED, tags=["USER-CREDENTIALS"])
 def create_user(user:UserCreate):
     try:
-        mycursor.execute("USE banking")
-        query = "INSERT INTO users (username, password) VALUES (%s, %s)"
-        #hashed password - user.password table
         hashed_password = get_password_hash(user.password)
-        user.password = hashed_password
-        values = (user.username, user.password)
-        mycursor.execute(query, values)
+        mycursor.execute("INSERT INTO users (username, role, password) VALUES (%s, %s, %s)", (user.username, user.role, hashed_password))
         mydb.commit()
         return {"Successfully Created"}
     except SQL.Error as err:

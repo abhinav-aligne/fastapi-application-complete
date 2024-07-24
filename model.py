@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from enum import Enum
 
 # It represents a token returned to the client
 class Token(BaseModel):
@@ -9,6 +10,7 @@ class Token(BaseModel):
 # Represents the data encoded in a token
 class TokenData(BaseModel):
     username: str | None = None
+    scopes: list[str] = []
 
 
 # Represents a user's data received with data validation(pydantic)
@@ -35,6 +37,13 @@ class amt(BaseModel):
     account_id : int
     amount : float 
 
+# Create Role enum class for checking the role 
+class Role(str, Enum):
+    user = "user"
+    admin = "admin"
+
+# Create UserCreate class for details with using the BaseModel for data-validation
 class UserCreate(BaseModel):
     username: EmailStr
+    role: Role = Role.user
     password: str
