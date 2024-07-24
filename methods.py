@@ -3,7 +3,7 @@ from database_connect import SQL, connectivity,table_banking, user_banking
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
-from model import BankAccount, amt, Token, UserCreate, User
+from model import BankAccount, amt, Token, UserCreate
 from auth import create_access_token, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, get_password_hash
 from datetime import timedelta
 from auth import get_admin_scope, get_user_scope

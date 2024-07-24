@@ -30,8 +30,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 password bearer authentication scheme
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="token",
-    scopes={"admin": "All Access.", "user": "Limited Access."},
-)
+    scopes={"admin": "All Access.", "user": "Limited Access."})
 
 # Function to verify a plaintext password against a hashed password
 def verify_password(plain_password, hashed_password):

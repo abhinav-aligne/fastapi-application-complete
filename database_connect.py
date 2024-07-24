@@ -11,10 +11,10 @@ def load_env_variables():
 # Connect to MySQL database
 def connectivity():
     mydb = SQL.connect(
-            user = os.getenv("user"),
-            password = os.getenv("password"),
-            host = os.getenv("host"),         
-            port = os.getenv("port"),
+            user = os.getenv("USER"),
+            password = os.getenv("PASSWORD"),
+            host = os.getenv("HOST"),         
+            port = int(os.getenv("PORT")),
             database = "banking"
     )
     mycursor = mydb.cursor(buffered=True)
