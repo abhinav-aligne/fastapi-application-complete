@@ -1,5 +1,4 @@
 from database_connect import connectivity
-from model import UserCreate
 
 mydb, mycursor = connectivity()
 
